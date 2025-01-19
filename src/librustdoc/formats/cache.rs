@@ -132,6 +132,9 @@ pub(crate) struct Cache {
     /// to check if a stripped item should get its file generated or not: if it's inside a
     /// `#[doc(hidden)]` item or a private one and not inlined, it shouldn't get a file.
     pub(crate) inlined_items: DefIdSet,
+
+    /// The map of source refs to source code
+    pub(crate) source_refs: FxHashMap<String, String>,
 }
 
 /// This struct is used to wrap the `cache` and `tcx` in order to run `DocFolder`.

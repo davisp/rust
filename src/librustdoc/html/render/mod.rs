@@ -498,6 +498,8 @@ fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
             edition: shared.edition(),
             playground: &shared.playground,
             heading_offset: HeadingOffset::H1,
+            mod_path: Vec::new(),
+            source_refs: &shared.cache.source_refs,
         }
         .into_string()
     )
@@ -542,6 +544,8 @@ fn render_markdown<'a, 'cx: 'a>(
                 edition: cx.shared.edition(),
                 playground: &cx.shared.playground,
                 heading_offset,
+                mod_path: cx.current.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+                source_refs: &cx.shared.cache.source_refs,
             }
             .into_string()
         )
@@ -1981,6 +1985,8 @@ fn render_impl(
                     edition: cx.shared.edition(),
                     playground: &cx.shared.playground,
                     heading_offset: HeadingOffset::H4,
+                    mod_path: cx.current.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+                    source_refs: &cx.shared.cache.source_refs,
                 }
                 .split_summary_and_content()
             })

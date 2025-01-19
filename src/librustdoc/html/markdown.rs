@@ -57,6 +57,7 @@ use crate::html::highlight;
 use crate::html::length_limit::HtmlWithLimit;
 use crate::html::render::small_url_encode;
 use crate::html::toc::{Toc, TocBuilder};
+use crate::passes;
 
 mod footnotes;
 #[cfg(test)]
@@ -99,6 +100,10 @@ pub struct Markdown<'a> {
     /// Offset at which we render headings.
     /// E.g. if `heading_offset: HeadingOffset::H2`, then `# something` renders an `<h2>`.
     pub heading_offset: HeadingOffset,
+    /// The current module path.
+    pub mod_path: Vec<String>,
+    /// Resolved source code references
+    pub source_refs: &'a FxHashMap<String, String>,
 }
 /// A struct like `Markdown` that renders the markdown with a table of contents.
 pub(crate) struct MarkdownWithToc<'a> {
@@ -108,6 +113,8 @@ pub(crate) struct MarkdownWithToc<'a> {
     pub(crate) error_codes: ErrorCodes,
     pub(crate) edition: Edition,
     pub(crate) playground: &'a Option<Playground>,
+    pub(crate) mod_path: Vec<String>,
+    pub(crate) source_refs: &'a FxHashMap<String, String>,
 }
 /// A tuple struct like `Markdown` that renders the markdown escaping HTML tags
 /// and includes no paragraph tags.
@@ -208,6 +215,10 @@ struct CodeBlocks<'p, 'a, I: Iterator<Item = Event<'a>>> {
     // Information about the playground if a URL has been specified, containing an
     // optional crate name and the URL.
     playground: &'p Option<Playground>,
+    // The current module path
+    mod_path: Vec<String>,
+    // Resolved source code references
+    source_refs: &'p FxHashMap<String, String>,
 }
 
 impl<'p, 'a, I: Iterator<Item = Event<'a>>> CodeBlocks<'p, 'a, I> {
@@ -216,8 +227,17 @@ impl<'p, 'a, I: Iterator<Item = Event<'a>>> CodeBlocks<'p, 'a, I> {
         error_codes: ErrorCodes,
         edition: Edition,
         playground: &'p Option<Playground>,
+        mod_path: Vec<String>,
+        source_refs: &'p FxHashMap<String, String>,
     ) -> Self {
-        CodeBlocks { inner: iter, check_error_codes: error_codes, edition, playground }
+        CodeBlocks {
+            inner: iter,
+            check_error_codes: error_codes,
+            edition,
+            playground,
+            mod_path,
+            source_refs,
+        }
     }
 }
 
@@ -241,38 +261,38 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             }
         }
 
-        let LangString { added_classes, compile_fail, should_panic, ignore, edition, .. } =
-            match kind {
-                CodeBlockKind::Fenced(ref lang) => {
-                    let parse_result =
-                        LangString::parse_without_check(lang, self.check_error_codes, false);
-                    if !parse_result.rust {
-                        let added_classes = parse_result.added_classes;
-                        let lang_string = if let Some(lang) = parse_result.unknown.first() {
-                            format!("language-{}", lang)
-                        } else {
-                            String::new()
-                        };
-                        let whitespace = if added_classes.is_empty() { "" } else { " " };
-                        return Some(Event::Html(
-                            format!(
-                                "<div class=\"example-wrap\">\
+        let LangString {
+            added_classes, compile_fail, should_panic, ignore, edition, source, ..
+        } = match kind {
+            CodeBlockKind::Fenced(ref lang) => {
+                let parse_result =
+                    LangString::parse_without_check(lang, self.check_error_codes, false);
+                if !parse_result.rust {
+                    let added_classes = parse_result.added_classes;
+                    let lang_string = if let Some(lang) = parse_result.unknown.first() {
+                        format!("language-{}", lang)
+                    } else {
+                        String::new()
+                    };
+                    let whitespace = if added_classes.is_empty() { "" } else { " " };
+                    return Some(Event::Html(
+                        format!(
+                            "<div class=\"example-wrap\">\
                                  <pre class=\"{lang_string}{whitespace}{added_classes}\">\
                                      <code>{text}</code>\
                                  </pre>\
                              </div>",
-                                added_classes = added_classes.join(" "),
-                                text = Escape(
-                                    original_text.strip_suffix('\n').unwrap_or(&original_text)
-                                ),
-                            )
-                            .into(),
-                        ));
-                    }
-                    parse_result
+                            added_classes = added_classes.join(" "),
+                            text =
+                                Escape(original_text.strip_suffix('\n').unwrap_or(&original_text)),
+                        )
+                        .into(),
+                    ));
                 }
-                CodeBlockKind::Indented => Default::default(),
-            };
+                parse_result
+            }
+            CodeBlockKind::Indented => Default::default(),
+        };
 
         let lines = original_text.lines().filter_map(|l| map_line(l).for_html());
         let text = lines.intersperse("\n".into()).collect::<String>();
@@ -325,6 +345,13 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             highlight::Tooltip::Edition(edition)
         } else {
             highlight::Tooltip::None
+        };
+
+        let text = if let Some(source) = source {
+            let source_ref = passes::calculate_ref(&self.mod_path[..], &source);
+            self.source_refs.get(&source_ref).map(|s| s.to_string()).unwrap_or(text)
+        } else {
+            text
         };
 
         // insert newline to clearly separate it from the
@@ -833,6 +860,7 @@ pub(crate) struct LangString {
     pub(crate) error_codes: Vec<String>,
     pub(crate) edition: Option<Edition>,
     pub(crate) added_classes: Vec<String>,
+    pub(crate) source: Option<String>,
     pub(crate) unknown: Vec<String>,
 }
 
@@ -1155,6 +1183,7 @@ impl Default for LangString {
             error_codes: Vec::new(),
             edition: None,
             added_classes: Vec::new(),
+            source: None,
             unknown: Vec::new(),
         }
     }
@@ -1310,6 +1339,8 @@ impl LangString {
                     LangStringToken::KeyValueAttribute(key, value) => {
                         if key == "class" {
                             data.added_classes.push(value.to_owned());
+                        } else if key == "source" {
+                            data.source = Some(value.to_string())
                         } else if let Some(extra) = extra {
                             extra.error_invalid_codeblock_attr(format!(
                                 "unsupported attribute `{key}`"
@@ -1359,6 +1390,8 @@ impl<'a> Markdown<'a> {
             edition,
             playground,
             heading_offset,
+            mod_path,
+            source_refs,
         } = self;
 
         let replacer = move |broken_link: BrokenLink<'_>| {
@@ -1376,7 +1409,7 @@ impl<'a> Markdown<'a> {
             let p = SpannedLinkReplacer::new(p, links);
             let p = footnotes::Footnotes::new(p, existing_footnotes);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
-            CodeBlocks::new(p, codes, edition, playground)
+            CodeBlocks::new(p, codes, edition, playground, mod_path, source_refs)
         })
     }
 
@@ -1432,8 +1465,16 @@ impl<'a> Markdown<'a> {
 
 impl MarkdownWithToc<'_> {
     pub(crate) fn into_parts(self) -> (Toc, String) {
-        let MarkdownWithToc { content: md, links, ids, error_codes: codes, edition, playground } =
-            self;
+        let MarkdownWithToc {
+            content: md,
+            links,
+            ids,
+            error_codes: codes,
+            edition,
+            playground,
+            mod_path,
+            source_refs,
+        } = self;
 
         // This is actually common enough to special-case
         if md.is_empty() {
@@ -1457,7 +1498,7 @@ impl MarkdownWithToc<'_> {
             let p = HeadingLinks::new(p, Some(&mut toc), ids, HeadingOffset::H1);
             let p = footnotes::Footnotes::new(p, existing_footnotes);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
-            let p = CodeBlocks::new(p, codes, edition, playground);
+            let p = CodeBlocks::new(p, codes, edition, playground, mod_path, source_refs);
             html::push_html(&mut s, p);
         });
 

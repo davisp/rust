@@ -67,6 +67,11 @@ fn check_rust_syntax(
         return;
     }
 
+    if code_block.lang_string.source.is_some() && is_empty {
+        // An empty code block with a source is not an error.
+        return;
+    }
+
     let Some(local_id) = item.item_id.as_def_id().and_then(|x| x.as_local()) else {
         // We don't need to check the syntax for other crates so returning
         // without doing anything should not be a problem.

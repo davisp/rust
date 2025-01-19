@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::{fmt, io};
 
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::DiagCtxtHandle;
 use rustc_session::config::{
     self, CodegenOptions, CrateType, ErrorOutputType, Externs, Input, JsonUnusedExterns,
@@ -663,6 +663,8 @@ impl Options {
             &mut id_map,
             edition,
             &None,
+            Vec::new(),
+            &FxHashMap::default(),
         ) else {
             dcx.fatal("`ExternalHtml::load` failed");
         };

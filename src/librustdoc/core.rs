@@ -215,7 +215,7 @@ pub(crate) fn create_config(
         lint_opts,
         describe_lints,
         lint_cap,
-        scrape_examples_options,
+        //scrape_examples_options,
         expanded_args,
         remap_path_prefix,
         ..
@@ -249,7 +249,8 @@ pub(crate) fn create_config(
         if proc_macro_crate { vec![CrateType::ProcMacro] } else { vec![CrateType::Rlib] };
     let resolve_doc_links =
         if *document_private { ResolveDocLinks::All } else { ResolveDocLinks::Exported };
-    let test = scrape_examples_options.map(|opts| opts.scrape_tests).unwrap_or(false);
+    //let test = scrape_examples_options.map(|opts| opts.scrape_tests).unwrap_or(false);
+    let test = true;
     // plays with error output here!
     let sessopts = config::Options {
         maybe_sysroot,

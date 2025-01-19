@@ -202,6 +202,8 @@ fn docblock_toc<'a>(
         error_codes: cx.shared.codes,
         edition: cx.shared.edition(),
         playground: &cx.shared.playground,
+        mod_path: cx.current.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+        source_refs: &cx.shared.cache.source_refs,
     }
     .into_parts();
     let links: Vec<Link<'_>> = toc

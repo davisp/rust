@@ -32,6 +32,10 @@ pub(crate) use self::collect_intra_doc_links::COLLECT_INTRA_DOC_LINKS;
 mod check_doc_test_visibility;
 pub(crate) use self::check_doc_test_visibility::CHECK_DOC_TEST_VISIBILITY;
 
+mod collect_code_refs;
+pub(crate) use self::collect_code_refs::COLLECT_CODE_REFS;
+pub(crate) use self::collect_code_refs::calculate_ref;
+
 mod collect_trait_impls;
 pub(crate) use self::collect_trait_impls::COLLECT_TRAIT_IMPLS;
 
@@ -72,6 +76,7 @@ pub(crate) enum Condition {
 
 /// The full list of passes.
 pub(crate) const PASSES: &[Pass] = &[
+    COLLECT_CODE_REFS,
     CHECK_DOC_TEST_VISIBILITY,
     STRIP_ALIASED_NON_LOCAL,
     STRIP_HIDDEN,
@@ -87,6 +92,7 @@ pub(crate) const PASSES: &[Pass] = &[
 
 /// The list of passes run by default.
 pub(crate) const DEFAULT_PASSES: &[ConditionalPass] = &[
+    ConditionalPass::always(COLLECT_CODE_REFS),
     ConditionalPass::always(COLLECT_TRAIT_IMPLS),
     ConditionalPass::always(CHECK_DOC_TEST_VISIBILITY),
     ConditionalPass::always(STRIP_ALIASED_NON_LOCAL),

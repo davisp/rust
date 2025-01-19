@@ -13,6 +13,7 @@ use std::fs::{File, create_dir_all, read_to_string};
 use std::io::prelude::*;
 use std::path::Path;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_span::edition::Edition;
 
 use crate::config::RenderOptions;
@@ -87,6 +88,8 @@ pub(crate) fn render_and_write<P: AsRef<Path>>(
             error_codes,
             edition,
             playground: &playground,
+            mod_path: Vec::new(),
+            source_refs: &FxHashMap::default(),
         }
         .into_string()
     } else {
@@ -98,6 +101,8 @@ pub(crate) fn render_and_write<P: AsRef<Path>>(
             edition,
             playground: &playground,
             heading_offset: HeadingOffset::H1,
+            mod_path: Vec::new(),
+            source_refs: &FxHashMap::default(),
         }
         .into_string()
     };

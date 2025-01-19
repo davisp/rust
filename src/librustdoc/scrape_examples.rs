@@ -26,7 +26,7 @@ use crate::{clean, config, formats};
 pub(crate) struct ScrapeExamplesOptions {
     output_path: PathBuf,
     target_crates: Vec<String>,
-    pub(crate) scrape_tests: bool,
+    pub(crate) _scrape_tests: bool,
 }
 
 impl ScrapeExamplesOptions {
@@ -38,7 +38,7 @@ impl ScrapeExamplesOptions {
             (Some(output_path), true, _) => Some(ScrapeExamplesOptions {
                 output_path: PathBuf::from(output_path),
                 target_crates,
-                scrape_tests,
+                _scrape_tests: scrape_tests,
             }),
             (Some(_), false, _) | (None, true, _) => {
                 dcx.fatal(

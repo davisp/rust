@@ -1,6 +1,7 @@
 use std::path::Path;
 use std::{fs, str};
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::DiagCtxtHandle;
 use rustc_span::edition::Edition;
 use serde::Serialize;
@@ -32,6 +33,8 @@ impl ExternalHtml {
         id_map: &mut IdMap,
         edition: Edition,
         playground: &Option<Playground>,
+        mod_path: Vec<String>,
+        source_refs: &FxHashMap<String, String>,
     ) -> Option<ExternalHtml> {
         let codes = ErrorCodes::from(nightly_build);
         let ih = load_external_files(in_header, dcx)?;
@@ -47,6 +50,8 @@ impl ExternalHtml {
                 edition,
                 playground,
                 heading_offset: HeadingOffset::H2,
+                mod_path: mod_path.clone(),
+                source_refs,
             }
             .into_string()
         );
@@ -62,6 +67,8 @@ impl ExternalHtml {
                 edition,
                 playground,
                 heading_offset: HeadingOffset::H2,
+                mod_path,
+                source_refs,
             }
             .into_string()
         );
