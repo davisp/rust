@@ -349,7 +349,12 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
 
         let text = if let Some(source) = source {
             let source_ref = passes::calculate_ref(&self.mod_path[..], &source);
-            self.source_refs.get(&source_ref).map(|s| s.to_string()).unwrap_or(text)
+            if let Some(source) = self.source_refs.get(&source_ref).map(|s| s.to_string()) {
+                source
+            } else {
+                // TODO: Better error handling
+                panic!("Missing source reference: {}", source_ref);
+            }
         } else {
             text
         };

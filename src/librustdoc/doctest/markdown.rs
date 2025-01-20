@@ -21,6 +21,10 @@ struct MdCollector {
 
 impl DocTestVisitor for MdCollector {
     fn visit_test(&mut self, test: String, config: LangString, rel_line: MdRelLine) {
+        if config.source.is_some() {
+            return;
+        }
+
         let filename = self.filename.clone();
         // First line of Markdown is line 1.
         let line = 1 + rel_line.offset();

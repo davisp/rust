@@ -32,6 +32,10 @@ fn check_rust_syntax(
     dox: &str,
     code_block: RustCodeBlock,
 ) {
+    if code_block.lang_string.source.is_some() {
+        return;
+    }
+
     let buffer = Lrc::new(Lock::new(Buffer::default()));
     let fallback_bundle = rustc_errors::fallback_fluent_bundle(
         rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),

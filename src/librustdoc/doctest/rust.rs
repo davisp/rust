@@ -47,6 +47,10 @@ impl RustCollector {
 
 impl DocTestVisitor for RustCollector {
     fn visit_test(&mut self, test: String, config: LangString, rel_line: MdRelLine) {
+        if config.source.is_some() {
+            return;
+        }
+
         let line = self.get_base_line() + rel_line.offset();
         self.tests.push(ScrapedDocTest::new(
             self.get_filename(),

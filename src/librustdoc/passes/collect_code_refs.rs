@@ -21,13 +21,24 @@ pub(crate) fn collect_code_refs(krate: Crate, cx: &mut DocContext<'_>) -> Crate 
     let mut coll = CodeRefCollector { cx, mod_path: vec![], refs: Default::default() };
     coll.visit_crate(&krate);
 
-    let refs = coll.refs;
-    let mut res = CodeRefResolver { cx, mod_path: vec![], refs, resolved: Default::default() };
+    let mut refs = coll.refs;
+    let mut res =
+        CodeRefResolver { cx, mod_path: vec![], refs: refs.clone(), resolved: Default::default() };
     res.visit_crate(&krate);
+
+    let resolved = res.resolved;
+
+    #[allow(rustc::potential_query_instability)]
+    for source_ref in refs.drain().collect::<Vec<_>>() {
+        if resolved.get(&source_ref).is_none() {
+            // TODO: Make these actual error messages.
+            panic!("Missing source reference: {}", source_ref);
+        }
+    }
 
     // Set the resolved source refs on the cache so we can emit the source
     // code when rendering code blocks.
-    cx.cache.source_refs = res.resolved;
+    cx.cache.source_refs = resolved;
 
     krate
 }
